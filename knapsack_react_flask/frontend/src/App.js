@@ -23,25 +23,41 @@ function App() {
   const [problem, setProblem] = useState({});
   const [dp, setDp] = useState([]);
   const [level, setLevel] = useState('medium');
+  const [type, setType] = useState('01');
+  const [solutionValue, setSolutionValue] = useState(null);
 
   const fetchProblem = () => {
     fetch('http://localhost:5000/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ level })
+      body: JSON.stringify({ level, type })
     })
     .then(res => res.json())
-    .then(setProblem);
+    .then(data => {
+      setProblem(data);
+      const empty = Array(data.n + 1)
+        .fill(null)
+        .map(() => Array(data.W + 1).fill(''));
+      setDp(empty);
+      setSolutionValue(null);
+    });
   };
 
   const fetchSolution = () => {
     fetch('http://localhost:5000/solve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(problem)
+      body: JSON.stringify({ ...problem, type })
     })
     .then(res => res.json())
-    .then(data => setDp(data.dp));
+    .then(data => {
+      if (data.dp) {
+        setDp(data.dp);
+        setSolutionValue(null);
+      } else if (data.value !== undefined) {
+        setSolutionValue(data.value);
+      }
+    });
   };
 
   const downloadPDF = () => {
@@ -67,6 +83,19 @@ function App() {
           <MenuItem value="hard">Hard</MenuItem>
         </Select>
       </FormControl>
+      <FormControl sx={{ minWidth: 150, mr: 2 }} size="small">
+        <InputLabel id="type-label">Type</InputLabel>
+        <Select
+          labelId="type-label"
+          value={type}
+          label="Type"
+          onChange={e => setType(e.target.value)}
+        >
+          <MenuItem value="01">0/1 Knapsack</MenuItem>
+          <MenuItem value="unbounded">Unbounded Knapsack</MenuItem>
+          <MenuItem value="fractional">Fractional Knapsack</MenuItem>
+        </Select>
+      </FormControl>
       <Button variant="contained" sx={{ mr: 1 }} onClick={fetchProblem}>New Problem</Button>
       <Button variant="contained" sx={{ mr: 1 }} onClick={fetchSolution}>Solve</Button>
       <Button variant="outlined" onClick={downloadPDF}>Download PDF</Button>
@@ -76,6 +105,9 @@ function App() {
         <Typography variant="body2">Weights: {JSON.stringify(problem.weights)}</Typography>
         <Typography variant="body2">Capacity: {problem.W}</Typography>
         <Typography variant="body2" gutterBottom>Items: {problem.n}</Typography>
+        {solutionValue !== null && (
+          <Typography variant="body2" gutterBottom>Max Value: {solutionValue}</Typography>
+        )}
         <Typography variant="h6" gutterBottom>DP Table:</Typography>
         <TableContainer component={Paper}>
           <Table size="small">
