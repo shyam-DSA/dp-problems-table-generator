@@ -1,6 +1,22 @@
 
 import React, { useState } from 'react';
 import html2pdf from 'html2pdf.js';
+import {
+  Button,
+  Container,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper
+} from '@mui/material';
 import './App.css';
 
 function App() {
@@ -30,48 +46,61 @@ function App() {
 
   const downloadPDF = () => {
     const element = document.getElementById('export');
-    html2pdf().from(element).save('knapsack_solution.pdf');
+    if (element) {
+      html2pdf(element);
+    }
   };
 
   return (
-    <div className="App">
-      <h1>Knapsack Problem Generator</h1>
-      <div>
-        <label>Difficulty:</label>
-        <select value={level} onChange={e => setLevel(e.target.value)}>
-          <option value="easy">Easy</option>
-          <option value="medium">Medium</option>
-          <option value="hard">Hard</option>
-        </select>
-        <button onClick={fetchProblem}>New Problem</button>
-        <button onClick={fetchSolution}>Solve</button>
-        <button onClick={downloadPDF}>Download PDF</button>
+    <Container className="App">
+      <Typography variant="h4" gutterBottom>Knapsack Problem Generator</Typography>
+      <FormControl sx={{ minWidth: 120, mr: 2 }} size="small">
+        <InputLabel id="level-label">Difficulty</InputLabel>
+        <Select
+          labelId="level-label"
+          value={level}
+          label="Difficulty"
+          onChange={e => setLevel(e.target.value)}
+        >
+          <MenuItem value="easy">Easy</MenuItem>
+          <MenuItem value="medium">Medium</MenuItem>
+          <MenuItem value="hard">Hard</MenuItem>
+        </Select>
+      </FormControl>
+      <Button variant="contained" sx={{ mr: 1 }} onClick={fetchProblem}>New Problem</Button>
+      <Button variant="contained" sx={{ mr: 1 }} onClick={fetchSolution}>Solve</Button>
+      <Button variant="outlined" onClick={downloadPDF}>Download PDF</Button>
+      <div id="export" style={{ marginTop: 20 }}>
+        <Typography variant="h6" gutterBottom>Problem:</Typography>
+        <Typography variant="body2">Values: {JSON.stringify(problem.values)}</Typography>
+        <Typography variant="body2">Weights: {JSON.stringify(problem.weights)}</Typography>
+        <Typography variant="body2">Capacity: {problem.W}</Typography>
+        <Typography variant="body2" gutterBottom>Items: {problem.n}</Typography>
+        <Typography variant="h6" gutterBottom>DP Table:</Typography>
+        <TableContainer component={Paper}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>i\\w</TableCell>
+                {problem.W && [...Array(problem.W + 1).keys()].map(w => (
+                  <TableCell key={w}>{w}</TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {dp.map((row, i) => (
+                <TableRow key={i}>
+                  <TableCell>{i}</TableCell>
+                  {row.map((cell, j) => (
+                    <TableCell key={j}>{cell}</TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </div>
-      <div id="export">
-        <h2>Problem:</h2>
-        <p>Values: {JSON.stringify(problem.values)}</p>
-        <p>Weights: {JSON.stringify(problem.weights)}</p>
-        <p>Capacity: {problem.W}</p>
-        <p>Items: {problem.n}</p>
-        <h2>DP Table:</h2>
-        <table border="1">
-          <thead>
-            <tr>
-              <th>i\w</th>
-              {problem.W && [...Array(problem.W + 1).keys()].map(w => <th key={w}>{w}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {dp.map((row, i) => (
-              <tr key={i}>
-                <td>{i}</td>
-                {row.map((cell, j) => <td key={j}>{cell}</td>)}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    </Container>
   );
 }
 
