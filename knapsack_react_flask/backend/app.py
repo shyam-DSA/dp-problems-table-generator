@@ -6,7 +6,25 @@ app = Flask(__name__)
 CORS(app)
 
 
-def generate_problem(level="medium"):
+INSIGHTS = {
+    "01": "Classic 0/1 knapsack solved with DP table. Trace back from dp[n][W] to find chosen items.",
+    "unbounded": "Similar to 0/1 but allows multiple use of the same item at each step.",
+    "fractional": "Sort by value/weight ratio and take portions greedily.",
+    "subset_sum": "Boolean DP where dp[i][t] tells if sum t is possible with first i numbers.",
+    "subset_partition": "Check subset sum for half of total array sum to see if partition exists."
+}
+
+
+def generate_problem(level="medium", ptype="01"):
+    if ptype in ["subset_sum", "subset_partition"]:
+        n = {"easy": 4, "medium": 5, "hard": 6}[level]
+        values = [random.randint(1, 15) for _ in range(n)]
+        weights = list(values)
+        if ptype == "subset_sum":
+            W = random.randint(1, sum(values))
+        else:
+            W = sum(values) // 2
+        return values, weights, W, n
     n = {"easy": 3, "medium": 4, "hard": 5}[level]
     W = {"easy": 10, "medium": 20, "hard": 30}[level]
     values = [random.randint(1, 15) for _ in range(n)]
@@ -55,11 +73,49 @@ def solve_fractional_knapsack(values, weights, W):
     return total
 
 
+def solve_subset_sum(values, W):
+    n = len(values)
+    dp = [[False] * (W + 1) for _ in range(n + 1)]
+    for i in range(n + 1):
+        dp[i][0] = True
+    for i in range(1, n + 1):
+        for w in range(1, W + 1):
+            dp[i][w] = dp[i - 1][w]
+            if values[i - 1] <= w:
+                dp[i][w] = dp[i][w] or dp[i - 1][w - values[i - 1]]
+    return dp
+
+
+def traceback_subset(dp, values, W):
+    i = len(values)
+    w = W
+    items = []
+    while i > 0 and w >= 0:
+        if w >= 0 and dp[i][w] and not dp[i - 1][w]:
+            items.append(i - 1)
+            w -= values[i - 1]
+        i -= 1
+    return items[::-1]
+
+
+def traceback_knapsack(dp, values, weights, W):
+    i = len(values)
+    w = W
+    items = []
+    while i > 0 and w >= 0:
+        if dp[i][w] != dp[i - 1][w]:
+            items.append(i - 1)
+            w -= weights[i - 1]
+        i -= 1
+    return items[::-1]
+
+
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.get_json()
     level = data.get("level", "medium")
-    values, weights, W, n = generate_problem(level)
+    ptype = data.get("type", "01")
+    values, weights, W, n = generate_problem(level, ptype)
     return jsonify({"values": values, "weights": weights, "W": W, "n": n})
 
 
@@ -72,13 +128,28 @@ def solve():
     knap_type = data.get("type", "01")
     if knap_type == "unbounded":
         dp = solve_unbounded_knapsack(values, weights, W)
-        return jsonify({"dp": dp})
+        return jsonify({"dp": dp, "insight": INSIGHTS["unbounded"]})
     elif knap_type == "fractional":
         value = solve_fractional_knapsack(values, weights, W)
-        return jsonify({"value": value})
+        return jsonify({"value": value, "insight": INSIGHTS["fractional"]})
+    elif knap_type == "subset_sum":
+        dp = solve_subset_sum(values, W)
+        possible = dp[len(values)][W]
+        items = traceback_subset(dp, values, W) if possible else []
+        return jsonify({"dp": dp, "possible": bool(possible), "items": items, "insight": INSIGHTS["subset_sum"]})
+    elif knap_type == "subset_partition":
+        total = sum(values)
+        if total % 2 != 0:
+            return jsonify({"possible": False, "insight": INSIGHTS["subset_partition"]})
+        target = total // 2
+        dp = solve_subset_sum(values, target)
+        possible = dp[len(values)][target]
+        items = traceback_subset(dp, values, target) if possible else []
+        return jsonify({"dp": dp, "possible": bool(possible), "target": target, "items": items, "insight": INSIGHTS["subset_partition"]})
     else:
         dp = solve_knapsack(values, weights, W)
-        return jsonify({"dp": dp})
+        items = traceback_knapsack(dp, values, weights, W)
+        return jsonify({"dp": dp, "items": items, "insight": INSIGHTS["01"]})
 
 
 if __name__ == "__main__":

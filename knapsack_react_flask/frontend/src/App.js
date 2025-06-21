@@ -23,8 +23,10 @@ function App() {
   const [problem, setProblem] = useState({});
   const [dp, setDp] = useState([]);
   const [level, setLevel] = useState('medium');
+  const [category, setCategory] = useState('knapsack');
   const [type, setType] = useState('01');
   const [solutionValue, setSolutionValue] = useState(null);
+  const [insight, setInsight] = useState('');
 
   const fetchProblem = () => {
     fetch('http://localhost:5000/generate', {
@@ -40,6 +42,7 @@ function App() {
         .map(() => Array(data.W + 1).fill(''));
       setDp(empty);
       setSolutionValue(null);
+      setInsight('');
     });
   };
 
@@ -54,8 +57,12 @@ function App() {
       if (data.dp) {
         setDp(data.dp);
         setSolutionValue(null);
+        setInsight(data.insight || '');
       } else if (data.value !== undefined) {
         setSolutionValue(data.value);
+        setInsight(data.insight || '');
+      } else {
+        setInsight(data.insight || '');
       }
     });
   };
@@ -63,7 +70,13 @@ function App() {
   const downloadPDF = () => {
     const element = document.getElementById('export');
     if (element) {
-      html2pdf(element);
+      const opt = {
+        margin: 10,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
     }
   };
 
@@ -83,19 +96,38 @@ function App() {
           <MenuItem value="hard">Hard</MenuItem>
         </Select>
       </FormControl>
-      <FormControl sx={{ minWidth: 150, mr: 2 }} size="small">
-        <InputLabel id="type-label">Type</InputLabel>
+      <FormControl sx={{ minWidth: 160, mr: 2 }} size="small">
+        <InputLabel id="cat-label">Category</InputLabel>
         <Select
-          labelId="type-label"
-          value={type}
-          label="Type"
-          onChange={e => setType(e.target.value)}
+          labelId="cat-label"
+          value={category}
+          label="Category"
+          onChange={e => {
+            setCategory(e.target.value);
+            setType('');
+          }}
         >
-          <MenuItem value="01">0/1 Knapsack</MenuItem>
-          <MenuItem value="unbounded">Unbounded Knapsack</MenuItem>
-          <MenuItem value="fractional">Fractional Knapsack</MenuItem>
+          <MenuItem value="knapsack">Knapsack Variation</MenuItem>
+          <MenuItem value="lcs">LCS Variation</MenuItem>
         </Select>
       </FormControl>
+      {category === 'knapsack' && (
+        <FormControl sx={{ minWidth: 150, mr: 2 }} size="small">
+          <InputLabel id="type-label">Type</InputLabel>
+          <Select
+            labelId="type-label"
+            value={type}
+            label="Type"
+            onChange={e => setType(e.target.value)}
+          >
+            <MenuItem value="01">0/1 Knapsack</MenuItem>
+            <MenuItem value="unbounded">Unbounded Knapsack</MenuItem>
+            <MenuItem value="fractional">Fractional Knapsack</MenuItem>
+            <MenuItem value="subset_sum">Subset Sum</MenuItem>
+            <MenuItem value="subset_partition">Subset Partition</MenuItem>
+          </Select>
+        </FormControl>
+      )}
       <Button variant="contained" sx={{ mr: 1 }} onClick={fetchProblem}>New Problem</Button>
       <Button variant="contained" sx={{ mr: 1 }} onClick={fetchSolution}>Solve</Button>
       <Button variant="outlined" onClick={downloadPDF}>Download PDF</Button>
@@ -110,7 +142,7 @@ function App() {
         )}
         <Typography variant="h6" gutterBottom>DP Table:</Typography>
         <TableContainer component={Paper}>
-          <Table size="small">
+          <Table size="small" sx={{ '& td, & th': { border: 1 } }}>
             <TableHead>
               <TableRow>
                 <TableCell>i\\w</TableCell>
@@ -131,6 +163,11 @@ function App() {
             </TableBody>
           </Table>
         </TableContainer>
+        {insight && (
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            {insight}
+          </Typography>
+        )}
       </div>
     </Container>
   );
