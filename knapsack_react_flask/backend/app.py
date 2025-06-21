@@ -16,6 +16,8 @@ INSIGHTS = {
 
 
 def generate_problem(level="medium", ptype="01"):
+    """Generate random problem parameters adjusted for the knapsack variant."""
+
     if ptype in ["subset_sum", "subset_partition"]:
         n = {"easy": 4, "medium": 5, "hard": 6}[level]
         values = [random.randint(1, 15) for _ in range(n)]
@@ -25,6 +27,23 @@ def generate_problem(level="medium", ptype="01"):
         else:
             W = sum(values) // 2
         return values, weights, W, n
+
+    if ptype == "unbounded":
+        n = {"easy": 3, "medium": 4, "hard": 5}[level]
+        W = {"easy": 15, "medium": 25, "hard": 35}[level]
+        values = [random.randint(1, 10) for _ in range(n)]
+        weights = [random.randint(1, W // 4) for _ in range(n)]
+        return values, weights, W, n
+
+    if ptype == "fractional":
+        n = {"easy": 3, "medium": 4, "hard": 5}[level]
+        base_W = {"easy": 10, "medium": 20, "hard": 30}[level]
+        values = [random.randint(1, 20) for _ in range(n)]
+        weights = [random.randint(1, base_W // 2) for _ in range(n)]
+        # force capacity smaller than total weight to exercise fractions
+        W = min(base_W, max(1, sum(weights) - random.randint(1, n)))
+        return values, weights, W, n
+
     n = {"easy": 3, "medium": 4, "hard": 5}[level]
     W = {"easy": 10, "medium": 20, "hard": 30}[level]
     values = [random.randint(1, 15) for _ in range(n)]
