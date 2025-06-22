@@ -205,7 +205,20 @@ function App() {
       </Box>
       <Paper id="export" sx={{ mt: 2, p: 2 }}>
         <Typography variant="h6" gutterBottom>Problem:</Typography>
-
+        {category === 'lcs' ? (
+          <>
+            <Typography variant="body2">String 1: {problem.s1}</Typography>
+            <Typography variant="body2">String 2: {problem.s2}</Typography>
+            <Typography variant="body2">Length m: {problem.m}</Typography>
+            <Typography variant="body2" gutterBottom>Length n: {problem.n}</Typography>
+          </>
+        ) : (
+          <>
+            <Typography variant="body2">Values: {JSON.stringify(problem.values)}</Typography>
+            <Typography variant="body2">Weights: {JSON.stringify(problem.weights)}</Typography>
+            <Typography variant="body2">Capacity: {problem.W}</Typography>
+            <Typography variant="body2" gutterBottom>Items: {problem.n}</Typography>
+          </>
         )}
         {solutionValue !== null && (
           <Typography variant="body2" gutterBottom>Result: {solutionValue}</Typography>
