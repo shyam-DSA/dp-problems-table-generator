@@ -7,32 +7,21 @@ CORS(app)
 
 
 INSIGHTS = {
-    "01": (
-        "Classic 0/1 knapsack solved using a DP table where dp[i][w] represents "
-        "the best value with the first i items and capacity w. Trace back from "
-        "dp[n][W] to list chosen item indices."
-    ),
-    "unbounded": (
-        "Unbounded knapsack also uses a DP table but each item may be reused "
-        "multiple times by looking at the current row when adding an item."
-    ),
-    "fractional": (
-        "Items are sorted by value/weight ratio and taken greedily. A fraction of "
-        "the next item may be taken when capacity is nearly full."
-    ),
-    "subset_sum": (
-        "Boolean DP where dp[i][t] states if a sum t can be formed using the "
-        "first i numbers. Trace back from the target to see the chosen numbers."
-    ),
-    "subset_partition": (
-        "Check subset sum for half of the total array sum to determine if a "
-        "partition exists and trace back the subset achieving that sum."
-    ),
+
 }
 
 
 def generate_problem(level="medium", ptype="01"):
     """Generate random problem parameters adjusted for the knapsack variant."""
+
+    if ptype in ["lcs", "lcsubstring", "scs"]:
+        length_map = {"easy": 4, "medium": 6, "hard": 8}
+        m = length_map[level]
+        n = length_map[level]
+        alphabet = "abcdef"
+        s1 = "".join(random.choice(alphabet) for _ in range(m))
+        s2 = "".join(random.choice(alphabet) for _ in range(n))
+        return s1, s2, m, n
 
     if ptype in ["subset_sum", "subset_partition"]:
         n = {"easy": 4, "medium": 5, "hard": 6}[level]
@@ -167,11 +156,98 @@ def traceback_knapsack(dp, values, weights, W, *, return_path=False):
     return (items, path) if return_path else items
 
 
+def solve_lcs(s1, s2):
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+    return dp
+
+
+def traceback_lcs(dp, s1, s2):
+    i, j = len(s1), len(s2)
+    seq = []
+    while i > 0 and j > 0:
+        if s1[i - 1] == s2[j - 1]:
+            seq.append(s1[i - 1])
+            i -= 1
+            j -= 1
+        elif dp[i - 1][j] >= dp[i][j - 1]:
+            i -= 1
+        else:
+            j -= 1
+    return "".join(reversed(seq))
+
+
+def solve_longest_common_substring(s1, s2):
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    max_len = 0
+    end_idx = 0
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+                if dp[i][j] > max_len:
+                    max_len = dp[i][j]
+                    end_idx = i
+            else:
+                dp[i][j] = 0
+    substr = s1[end_idx - max_len:end_idx]
+    return dp, substr
+
+
+def solve_scs(s1, s2):
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(m + 1):
+        dp[i][0] = i
+    for j in range(n + 1):
+        dp[0][j] = j
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = min(dp[i - 1][j], dp[i][j - 1]) + 1
+    return dp
+
+
+def traceback_scs(dp, s1, s2):
+    i, j = len(s1), len(s2)
+    res = []
+    while i > 0 and j > 0:
+        if s1[i - 1] == s2[j - 1]:
+            res.append(s1[i - 1])
+            i -= 1
+            j -= 1
+        elif dp[i - 1][j] < dp[i][j - 1]:
+            res.append(s1[i - 1])
+            i -= 1
+        else:
+            res.append(s2[j - 1])
+            j -= 1
+    while i > 0:
+        res.append(s1[i - 1])
+        i -= 1
+    while j > 0:
+        res.append(s2[j - 1])
+        j -= 1
+    return "".join(reversed(res))
+
+
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.get_json()
     level = data.get("level", "medium")
     ptype = data.get("type", "01")
+    if ptype in ["lcs", "lcsubstring", "scs"]:
+        s1, s2, m, n = generate_problem(level, ptype)
+        return jsonify({"s1": s1, "s2": s2, "m": m, "n": n})
     values, weights, W, n = generate_problem(level, ptype)
     return jsonify({"values": values, "weights": weights, "W": W, "n": n})
 
@@ -179,10 +255,25 @@ def generate():
 @app.route("/solve", methods=["POST"])
 def solve():
     data = request.get_json()
+    knap_type = data.get("type", "01")
+    if knap_type in ["lcs", "lcsubstring", "scs"]:
+        s1 = data["s1"]
+        s2 = data["s2"]
+        if knap_type == "lcs":
+            dp = solve_lcs(s1, s2)
+            seq = traceback_lcs(dp, s1, s2)
+            return jsonify({"dp": dp, "result": seq, "insight": INSIGHTS["lcs"]})
+        elif knap_type == "lcsubstring":
+            dp, substr = solve_longest_common_substring(s1, s2)
+            return jsonify({"dp": dp, "result": substr, "insight": INSIGHTS["lcsubstring"]})
+        else:
+            dp = solve_scs(s1, s2)
+            seq = traceback_scs(dp, s1, s2)
+            return jsonify({"dp": dp, "result": seq, "insight": INSIGHTS["scs"]})
+
     values = data["values"]
     weights = data["weights"]
     W = data["W"]
-    knap_type = data.get("type", "01")
     if knap_type == "unbounded":
         dp, states = solve_unbounded_knapsack(values, weights, W, return_states=True)
         items, path = traceback_knapsack(dp, values, weights, W, return_path=True)
