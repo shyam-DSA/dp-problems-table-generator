@@ -208,6 +208,19 @@ def solve_lcs(s1, s2):
                 dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
     return dp
 
+def solve_lcs_steps(s1, s2):
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    steps = []
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+            steps.append(copy.deepcopy(dp))
+    return dp, steps
+
 
 def traceback_lcs(dp, s1, s2):
     i, j = len(s1), len(s2)
@@ -241,6 +254,25 @@ def solve_longest_common_substring(s1, s2):
     substr = s1[end_idx - max_len:end_idx]
     return dp, substr
 
+def solve_longest_common_substring_steps(s1, s2):
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    steps = []
+    max_len = 0
+    end_idx = 0
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+                if dp[i][j] > max_len:
+                    max_len = dp[i][j]
+                    end_idx = i
+            else:
+                dp[i][j] = 0
+            steps.append(copy.deepcopy(dp))
+    substr = s1[end_idx - max_len:end_idx]
+    return dp, steps, substr
+
 
 def solve_scs(s1, s2):
     m, n = len(s1), len(s2)
@@ -256,6 +288,25 @@ def solve_scs(s1, s2):
             else:
                 dp[i][j] = min(dp[i - 1][j], dp[i][j - 1]) + 1
     return dp
+
+def solve_scs_steps(s1, s2):
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    steps = []
+    for i in range(m + 1):
+        dp[i][0] = i
+        steps.append(copy.deepcopy(dp))
+    for j in range(1, n + 1):
+        dp[0][j] = j
+        steps.append(copy.deepcopy(dp))
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = min(dp[i - 1][j], dp[i][j - 1]) + 1
+            steps.append(copy.deepcopy(dp))
+    return dp, steps
 
 
 def traceback_scs(dp, s1, s2):
@@ -349,19 +400,40 @@ def solve():
 
 @app.route("/solve_steps", methods=["POST"])
 def solve_steps_route():
-    """Return step-by-step states for 0/1 knapsack."""
+    """Return step-by-step states for supported problem types."""
     data = request.get_json()
-    knap_type = data.get("type", "01")
-    if knap_type != "01":
-        return jsonify({"error": "step mode only supported for 0/1 knapsack"}), 400
+    ptype = data.get("type", "01")
 
-    values = data["values"]
-    weights = data["weights"]
-    W = data["W"]
-    dp, steps = solve_knapsack_steps(values, weights, W)
-    items, path = traceback_knapsack(dp, values, weights, W, return_path=True)
-    return jsonify({"dp": dp, "steps": steps, "items": items, "path": path,
-                    "insight": INSIGHTS["01"]})
+    if ptype == "01":
+        values = data["values"]
+        weights = data["weights"]
+        W = data["W"]
+        dp, steps = solve_knapsack_steps(values, weights, W)
+        items, path = traceback_knapsack(dp, values, weights, W, return_path=True)
+        return jsonify({"dp": dp, "steps": steps, "items": items, "path": path,
+                        "insight": INSIGHTS["01"]})
+    elif ptype == "lcs":
+        s1 = data["s1"]
+        s2 = data["s2"]
+        dp, steps = solve_lcs_steps(s1, s2)
+        seq = traceback_lcs(dp, s1, s2)
+        return jsonify({"dp": dp, "steps": steps, "result": seq,
+                        "insight": INSIGHTS["lcs"]})
+    elif ptype == "lcsubstring":
+        s1 = data["s1"]
+        s2 = data["s2"]
+        dp, steps, substr = solve_longest_common_substring_steps(s1, s2)
+        return jsonify({"dp": dp, "steps": steps, "result": substr,
+                        "insight": INSIGHTS["lcsubstring"]})
+    elif ptype == "scs":
+        s1 = data["s1"]
+        s2 = data["s2"]
+        dp, steps = solve_scs_steps(s1, s2)
+        seq = traceback_scs(dp, s1, s2)
+        return jsonify({"dp": dp, "steps": steps, "result": seq,
+                        "insight": INSIGHTS["scs"]})
+    else:
+        return jsonify({"error": "step mode not supported"}), 400
 
 
 if __name__ == "__main__":

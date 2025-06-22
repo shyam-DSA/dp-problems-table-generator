@@ -37,10 +37,12 @@ function App() {
   const [path, setPath] = useState([]);
   const [highlight, setHighlight] = useState(new Set());
   const [changed, setChanged] = useState(new Set());
+  const [filled, setFilled] = useState(new Set());
   const [formula, setFormula] = useState('');
 
   useEffect(() => {
     setFormula('');
+    setFilled(new Set());
   }, [stepMode]);
 
   useEffect(() => {
@@ -79,6 +81,7 @@ function App() {
           }
         }
         setChanged(changedSet);
+        setFilled(prev => new Set([...prev, ...changedSet]));
         if (firstChange) {
           const i = firstChange.i;
           const j = firstChange.j;
@@ -112,6 +115,7 @@ function App() {
         }
       } else {
         setChanged(new Set());
+        setFilled(new Set());
         setFormula('');
       }
       if (currentStep === steps.length - 1) {
@@ -154,6 +158,7 @@ function App() {
       setPath([]);
       setHighlight(new Set());
       setChanged(new Set());
+      setFilled(new Set());
       setFormula('');
     });
   };
@@ -167,7 +172,7 @@ function App() {
 
   const fetchSolution = () => {
     let url = 'http://localhost:5000/solve';
-    if (stepMode && type === '01') {
+    if (stepMode) {
       url = 'http://localhost:5000/solve_steps';
     }
     fetch(url, {
@@ -180,6 +185,7 @@ function App() {
       if (stepMode) {
         const stepData = data.steps || data.states || [];
         setSteps(stepData);
+        setFilled(new Set());
         setCurrentStep(0);
         setDp(stepData.length > 0 ? stepData[0] : data.dp);
         setPath(data.path || []);
@@ -324,7 +330,7 @@ function App() {
           <Typography variant="body2" gutterBottom>Result: {solutionValue}</Typography>
         )}
         <Typography variant="h6" gutterBottom>DP Table:</Typography>
-        <DPTableVisualizer dp={dp} category={category} problem={problem} highlight={highlight} changed={changed} />
+        <DPTableVisualizer dp={dp} category={category} problem={problem} highlight={highlight} changed={changed} filled={filled} />
         {formula && (
           <Typography variant="body2" sx={{ mt: 1 }}>
             {formula}

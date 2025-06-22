@@ -25,3 +25,11 @@ td {
 .changed-cell {
   animation: flash 0.5s ease;
 }
+
+.filled-cell {
+  background-color: #e0f7fa;
+}
+
+.unfilled-cell {
+  background-color: #ffffff;
+}
