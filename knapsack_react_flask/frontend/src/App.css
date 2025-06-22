@@ -8,3 +8,11 @@ body {
 .App {
   margin-top: 20px;
 }
+
+.path-cell {
+  background-color: #b2fab4;
+}
+
+td {
+  transition: background-color 0.3s ease;
+}

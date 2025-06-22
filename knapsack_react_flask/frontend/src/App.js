@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import html2pdf from 'html2pdf.js';
 import {
   AppBar,
@@ -30,6 +30,31 @@ function App() {
   const [type, setType] = useState('01');
   const [solutionValue, setSolutionValue] = useState(null);
   const [insight, setInsight] = useState('');
+  const [items, setItems] = useState([]);
+  const [possible, setPossible] = useState(null);
+  const [target, setTarget] = useState(null);
+  const [dpStates, setDpStates] = useState([]);
+  const [path, setPath] = useState([]);
+  const [highlight, setHighlight] = useState(new Set());
+
+  useEffect(() => {
+    if (dpStates.length > 0) {
+      setDp(dpStates[0]);
+      let i = 0;
+      const id = setInterval(() => {
+        i += 1;
+        if (i < dpStates.length) {
+          setDp(dpStates[i]);
+        } else {
+          clearInterval(id);
+          setDp(dpStates[dpStates.length - 1]);
+          const setH = new Set(path.map(p => `${p[0]}-${p[1]}`));
+          setHighlight(setH);
+        }
+      }, 300);
+      return () => clearInterval(id);
+    }
+  }, [dpStates, path]);
 
   const fetchProblem = () => {
     fetch('http://localhost:5000/generate', {
@@ -53,6 +78,12 @@ function App() {
       setDp(empty);
       setSolutionValue(null);
       setInsight('');
+      setItems([]);
+      setPossible(null);
+      setTarget(null);
+      setDpStates([]);
+      setPath([]);
+      setHighlight(new Set());
     });
   };
 
@@ -65,18 +96,21 @@ function App() {
     .then(res => res.json())
     .then(data => {
       if (data.dp) {
+        setDpStates(data.states || []);
         setDp(data.dp);
-        if (data.result !== undefined) {
-          setSolutionValue(data.result);
-        } else {
-          setSolutionValue(null);
-        }
+
         setInsight(data.insight || '');
       } else if (data.value !== undefined) {
         setSolutionValue(data.value);
         setInsight(data.insight || '');
+        setItems([]);
+        setPossible(null);
+        setTarget(null);
       } else {
         setInsight(data.insight || '');
+        setItems(data.items || []);
+        setPossible(data.hasOwnProperty('possible') ? data.possible : null);
+        setTarget(data.hasOwnProperty('target') ? data.target : null);
       }
     });
   };
@@ -171,18 +205,7 @@ function App() {
       </Box>
       <Paper id="export" sx={{ mt: 2, p: 2 }}>
         <Typography variant="h6" gutterBottom>Problem:</Typography>
-        {category === 'lcs' ? (
-          <>
-            <Typography variant="body2">String1: {problem.s1}</Typography>
-            <Typography variant="body2" gutterBottom>String2: {problem.s2}</Typography>
-          </>
-        ) : (
-          <>
-            <Typography variant="body2">Values: {JSON.stringify(problem.values)}</Typography>
-            <Typography variant="body2">Weights: {JSON.stringify(problem.weights)}</Typography>
-            <Typography variant="body2">Capacity: {problem.W}</Typography>
-            <Typography variant="body2" gutterBottom>Items: {problem.n}</Typography>
-          </>
+
         )}
         {solutionValue !== null && (
           <Typography variant="body2" gutterBottom>Result: {solutionValue}</Typography>
@@ -206,13 +229,23 @@ function App() {
                 <TableRow key={i}>
                   <TableCell>{i}</TableCell>
                   {row.map((cell, j) => (
-                    <TableCell key={j}>{cell}</TableCell>
+                    <TableCell
+                      key={j}
+                      className={highlight.has(`${i}-${j}`) ? 'path-cell' : ''}
+                    >
+                      {cell}
+                    </TableCell>
                   ))}
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
+          </TableBody>
+        </Table>
         </TableContainer>
+        {items.length > 0 && (
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Selected item indices: {JSON.stringify(items)}
+          </Typography>
+        )}
         {insight && (
           <Typography variant="body2" sx={{ mt: 1 }}>
             {insight}
