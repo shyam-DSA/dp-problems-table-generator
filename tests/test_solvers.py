@@ -6,6 +6,9 @@ from knapsack_react_flask.backend.app import (
     solve_unbounded_knapsack,
     solve_fractional_knapsack,
     solve_subset_sum,
+    solve_lcs,
+    solve_longest_common_substring,
+    solve_scs,
 )
 
 def test_solve_knapsack():
@@ -34,3 +37,24 @@ def test_solve_subset_sum():
     W = 9
     dp = solve_subset_sum(values, W)
     assert dp[-1][W] is True
+
+
+def test_solve_lcs():
+    s1 = "abcde"
+    s2 = "ace"
+    dp = solve_lcs(s1, s2)
+    assert dp[-1][-1] == 3
+
+
+def test_longest_common_substring():
+    s1 = "abcdxyz"
+    s2 = "xyzabcd"
+    dp, substr = solve_longest_common_substring(s1, s2)
+    assert substr == "abcd"
+
+
+def test_scs():
+    s1 = "abac"
+    s2 = "cab"
+    dp = solve_scs(s1, s2)
+    assert dp[-1][-1] == 5

@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import html2pdf from 'html2pdf.js';
 import {
+  AppBar,
+  Toolbar,
   Button,
   Container,
   Typography,
@@ -15,7 +17,8 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper
+  Paper,
+  Box
 } from '@mui/material';
 import './App.css';
 
@@ -37,9 +40,16 @@ function App() {
     .then(res => res.json())
     .then(data => {
       setProblem(data);
-      const empty = Array(data.n + 1)
-        .fill(null)
-        .map(() => Array(data.W + 1).fill(''));
+      let empty;
+      if (category === 'lcs') {
+        empty = Array(data.m + 1)
+          .fill(null)
+          .map(() => Array(data.n + 1).fill(''));
+      } else {
+        empty = Array(data.n + 1)
+          .fill(null)
+          .map(() => Array(data.W + 1).fill(''));
+      }
       setDp(empty);
       setSolutionValue(null);
       setInsight('');
@@ -56,7 +66,11 @@ function App() {
     .then(data => {
       if (data.dp) {
         setDp(data.dp);
-        setSolutionValue(null);
+        if (data.result !== undefined) {
+          setSolutionValue(data.result);
+        } else {
+          setSolutionValue(null);
+        }
         setInsight(data.insight || '');
       } else if (data.value !== undefined) {
         setSolutionValue(data.value);
@@ -81,9 +95,17 @@ function App() {
   };
 
   return (
-    <Container className="App">
-      <Typography variant="h4" gutterBottom>Knapsack Problem Generator</Typography>
-      <FormControl sx={{ minWidth: 120, mr: 2 }} size="small">
+    <>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            DP Problem Generator
+          </Typography>
+        </Toolbar>
+      </AppBar>
+      <Container className="App" sx={{ mt: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+      <FormControl sx={{ minWidth: 120 }} size="small">
         <InputLabel id="level-label">Difficulty</InputLabel>
         <Select
           labelId="level-label"
@@ -96,7 +118,7 @@ function App() {
           <MenuItem value="hard">Hard</MenuItem>
         </Select>
       </FormControl>
-      <FormControl sx={{ minWidth: 160, mr: 2 }} size="small">
+      <FormControl sx={{ minWidth: 160 }} size="small">
         <InputLabel id="cat-label">Category</InputLabel>
         <Select
           labelId="cat-label"
@@ -112,7 +134,7 @@ function App() {
         </Select>
       </FormControl>
       {category === 'knapsack' && (
-        <FormControl sx={{ minWidth: 150, mr: 2 }} size="small">
+        <FormControl sx={{ minWidth: 150 }} size="small">
           <InputLabel id="type-label">Type</InputLabel>
           <Select
             labelId="type-label"
@@ -128,25 +150,53 @@ function App() {
           </Select>
         </FormControl>
       )}
-      <Button variant="contained" sx={{ mr: 1 }} onClick={fetchProblem}>New Problem</Button>
-      <Button variant="contained" sx={{ mr: 1 }} onClick={fetchSolution}>Solve</Button>
+      {category === 'lcs' && (
+        <FormControl sx={{ minWidth: 170 }} size="small">
+          <InputLabel id="type-label">Type</InputLabel>
+          <Select
+            labelId="type-label"
+            value={type}
+            label="Type"
+            onChange={e => setType(e.target.value)}
+          >
+            <MenuItem value="lcs">LCS</MenuItem>
+            <MenuItem value="lcsubstring">Longest Common Substring</MenuItem>
+            <MenuItem value="scs">Shortest Common Supersequence</MenuItem>
+          </Select>
+        </FormControl>
+      )}
+      <Button variant="contained" onClick={fetchProblem}>New Problem</Button>
+      <Button variant="contained" onClick={fetchSolution}>Solve</Button>
       <Button variant="outlined" onClick={downloadPDF}>Download PDF</Button>
-      <div id="export" style={{ marginTop: 20 }}>
+      </Box>
+      <Paper id="export" sx={{ mt: 2, p: 2 }}>
         <Typography variant="h6" gutterBottom>Problem:</Typography>
-        <Typography variant="body2">Values: {JSON.stringify(problem.values)}</Typography>
-        <Typography variant="body2">Weights: {JSON.stringify(problem.weights)}</Typography>
-        <Typography variant="body2">Capacity: {problem.W}</Typography>
-        <Typography variant="body2" gutterBottom>Items: {problem.n}</Typography>
+        {category === 'lcs' ? (
+          <>
+            <Typography variant="body2">String1: {problem.s1}</Typography>
+            <Typography variant="body2" gutterBottom>String2: {problem.s2}</Typography>
+          </>
+        ) : (
+          <>
+            <Typography variant="body2">Values: {JSON.stringify(problem.values)}</Typography>
+            <Typography variant="body2">Weights: {JSON.stringify(problem.weights)}</Typography>
+            <Typography variant="body2">Capacity: {problem.W}</Typography>
+            <Typography variant="body2" gutterBottom>Items: {problem.n}</Typography>
+          </>
+        )}
         {solutionValue !== null && (
-          <Typography variant="body2" gutterBottom>Max Value: {solutionValue}</Typography>
+          <Typography variant="body2" gutterBottom>Result: {solutionValue}</Typography>
         )}
         <Typography variant="h6" gutterBottom>DP Table:</Typography>
         <TableContainer component={Paper}>
-          <Table size="small" sx={{ '& td, & th': { border: 1 } }}>
+          <Table size="small" sx={{ '& td, & th': { border: 1, padding: '4px', textAlign: 'center' } }}>
             <TableHead>
               <TableRow>
-                <TableCell>i\\w</TableCell>
-                {problem.W && [...Array(problem.W + 1).keys()].map(w => (
+                <TableCell>{category === 'lcs' ? 'i\\j' : 'i\\w'}</TableCell>
+                {category === 'lcs' && problem.n && [...Array(problem.n + 1).keys()].map(c => (
+                  <TableCell key={c}>{c}</TableCell>
+                ))}
+                {category !== 'lcs' && problem.W && [...Array(problem.W + 1).keys()].map(w => (
                   <TableCell key={w}>{w}</TableCell>
                 ))}
               </TableRow>
@@ -168,8 +218,9 @@ function App() {
             {insight}
           </Typography>
         )}
-      </div>
+      </Paper>
     </Container>
+    </>
   );
 }
 
