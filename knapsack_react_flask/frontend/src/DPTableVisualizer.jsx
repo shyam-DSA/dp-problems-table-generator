@@ -4,7 +4,10 @@ import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
 function DPTableVisualizer({ dp, category, problem, highlight, changed, filled }) {
   return (
     <TableContainer component={Paper} className="dp-table">
-      <Table size="small" sx={{ '& td, & th': { border: 1, padding: '4px', textAlign: 'center' } }}>
+      <Table
+        size="small"
+        sx={{ '& td, & th': { border: 1, borderColor: '#000', padding: '4px', textAlign: 'center' } }}
+      >
         <TableHead>
           <TableRow>
             <TableCell>{category === 'lcs' ? 'i\\j' : 'i\\w'}</TableCell>
