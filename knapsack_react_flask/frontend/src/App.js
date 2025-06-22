@@ -11,16 +11,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
-  Box
+  Box,
+  Checkbox,
+  FormControlLabel
 } from '@mui/material';
 import './App.css';
+import DPTableVisualizer from './DPTableVisualizer';
 
 function App() {
   const [problem, setProblem] = useState({});
@@ -34,11 +31,14 @@ function App() {
   const [possible, setPossible] = useState(null);
   const [target, setTarget] = useState(null);
   const [dpStates, setDpStates] = useState([]);
+  const [steps, setSteps] = useState([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [stepMode, setStepMode] = useState(false);
   const [path, setPath] = useState([]);
   const [highlight, setHighlight] = useState(new Set());
 
   useEffect(() => {
-    if (dpStates.length > 0) {
+    if (!stepMode && dpStates.length > 0) {
       setDp(dpStates[0]);
       let i = 0;
       const id = setInterval(() => {
@@ -54,7 +54,19 @@ function App() {
       }, 300);
       return () => clearInterval(id);
     }
-  }, [dpStates, path]);
+  }, [dpStates, path, stepMode]);
+
+  useEffect(() => {
+    if (stepMode && steps.length > 0) {
+      setDp(steps[currentStep]);
+      if (currentStep === steps.length - 1) {
+        const setH = new Set(path.map(p => `${p[0]}-${p[1]}`));
+        setHighlight(setH);
+      } else {
+        setHighlight(new Set());
+      }
+    }
+  }, [steps, currentStep, stepMode, path]);
 
   const fetchProblem = () => {
     fetch('http://localhost:5000/generate', {
@@ -82,24 +94,30 @@ function App() {
       setPossible(null);
       setTarget(null);
       setDpStates([]);
+      setSteps([]);
+      setCurrentStep(0);
       setPath([]);
       setHighlight(new Set());
     });
   };
 
   const fetchSolution = () => {
-    fetch('http://localhost:5000/solve', {
+    const url = stepMode ? 'http://localhost:5000/solve_steps' : 'http://localhost:5000/solve';
+    fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...problem, type })
     })
     .then(res => res.json())
     .then(data => {
-      if (data.dp) {
-        setDpStates(data.states || []);
-        setDp(data.dp);
-
+      if (stepMode) {
+        setSteps(data.steps || []);
+        setCurrentStep(0);
+        setDp(data.steps ? data.steps[0] : data.dp);
+        setPath(data.path || []);
+        setItems(data.items || []);
         setInsight(data.insight || '');
+        setDpStates([]);
       } else if (data.value !== undefined) {
         setSolutionValue(data.value);
         setInsight(data.insight || '');
@@ -107,6 +125,8 @@ function App() {
         setPossible(null);
         setTarget(null);
       } else {
+        setDpStates(data.states || []);
+        setDp(data.dp);
         setInsight(data.insight || '');
         setItems(data.items || []);
         setPossible(data.hasOwnProperty('possible') ? data.possible : null);
@@ -199,8 +219,18 @@ function App() {
           </Select>
         </FormControl>
       )}
+      <FormControlLabel
+        control={<Checkbox checked={stepMode} onChange={e => setStepMode(e.target.checked)} />}
+        label="Step Mode"
+      />
       <Button variant="contained" onClick={fetchProblem}>New Problem</Button>
       <Button variant="contained" onClick={fetchSolution}>Solve</Button>
+      {stepMode && steps.length > 0 && (
+        <>
+          <Button variant="outlined" onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}>Prev</Button>
+          <Button variant="outlined" onClick={() => setCurrentStep(Math.min(steps.length - 1, currentStep + 1))}>Next</Button>
+        </>
+      )}
       <Button variant="outlined" onClick={downloadPDF}>Download PDF</Button>
       </Box>
       <Paper id="export" sx={{ mt: 2, p: 2 }}>
@@ -224,36 +254,7 @@ function App() {
           <Typography variant="body2" gutterBottom>Result: {solutionValue}</Typography>
         )}
         <Typography variant="h6" gutterBottom>DP Table:</Typography>
-        <TableContainer component={Paper}>
-          <Table size="small" sx={{ '& td, & th': { border: 1, padding: '4px', textAlign: 'center' } }}>
-            <TableHead>
-              <TableRow>
-                <TableCell>{category === 'lcs' ? 'i\\j' : 'i\\w'}</TableCell>
-                {category === 'lcs' && problem.n && [...Array(problem.n + 1).keys()].map(c => (
-                  <TableCell key={c}>{c}</TableCell>
-                ))}
-                {category !== 'lcs' && problem.W && [...Array(problem.W + 1).keys()].map(w => (
-                  <TableCell key={w}>{w}</TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {dp.map((row, i) => (
-                <TableRow key={i}>
-                  <TableCell>{i}</TableCell>
-                  {row.map((cell, j) => (
-                    <TableCell
-                      key={j}
-                      className={highlight.has(`${i}-${j}`) ? 'path-cell' : ''}
-                    >
-                      {cell}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
-        </TableContainer>
+        <DPTableVisualizer dp={dp} category={category} problem={problem} highlight={highlight} />
         {items.length > 0 && (
           <Typography variant="body2" sx={{ mt: 1 }}>
             Selected item indices: {JSON.stringify(items)}

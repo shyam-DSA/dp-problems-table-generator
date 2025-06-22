@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import random
+import copy
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -95,6 +96,23 @@ def solve_knapsack(values, weights, W, *, return_states=False):
         if return_states:
             states.append([row[:] for row in dp])
     return (dp, states) if return_states else dp
+
+
+def solve_knapsack_steps(values, weights, W):
+    """Solve 0/1 knapsack returning a state after each cell update."""
+    n = len(values)
+    dp = [[0] * (W + 1) for _ in range(n + 1)]
+    steps = []
+    for i in range(1, n + 1):
+        for w in range(W + 1):
+            if weights[i - 1] <= w:
+                dp[i][w] = max(
+                    dp[i - 1][w], values[i - 1] + dp[i - 1][w - weights[i - 1]]
+                )
+            else:
+                dp[i][w] = dp[i - 1][w]
+            steps.append(copy.deepcopy(dp))
+    return dp, steps
 
 
 def solve_unbounded_knapsack(values, weights, W, *, return_states=False):
@@ -327,6 +345,23 @@ def solve():
         items, path = traceback_knapsack(dp, values, weights, W, return_path=True)
         return jsonify({"dp": dp, "states": states, "items": items, "path": path,
                         "insight": INSIGHTS["01"]})
+
+
+@app.route("/solve_steps", methods=["POST"])
+def solve_steps_route():
+    """Return step-by-step states for 0/1 knapsack."""
+    data = request.get_json()
+    knap_type = data.get("type", "01")
+    if knap_type != "01":
+        return jsonify({"error": "step mode only supported for 0/1 knapsack"}), 400
+
+    values = data["values"]
+    weights = data["weights"]
+    W = data["W"]
+    dp, steps = solve_knapsack_steps(values, weights, W)
+    items, path = traceback_knapsack(dp, values, weights, W, return_path=True)
+    return jsonify({"dp": dp, "steps": steps, "items": items, "path": path,
+                    "insight": INSIGHTS["01"]})
 
 
 if __name__ == "__main__":

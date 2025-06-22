@@ -9,6 +9,7 @@ from knapsack_react_flask.backend.app import (
     solve_lcs,
     solve_longest_common_substring,
     solve_scs,
+    solve_knapsack_steps
 )
 
 def test_solve_knapsack():
@@ -58,3 +59,13 @@ def test_scs():
     s2 = "cab"
     dp = solve_scs(s1, s2)
     assert dp[-1][-1] == 5
+
+
+def test_solve_knapsack_steps():
+    values = [1, 2, 3]
+    weights = [1, 2, 3]
+    W = 5
+    dp, steps = solve_knapsack_steps(values, weights, W)
+    assert dp[-1][-1] == 5
+    assert len(steps) == len(values) * (W + 1)
+    assert steps[-1][-1][-1] == 5
