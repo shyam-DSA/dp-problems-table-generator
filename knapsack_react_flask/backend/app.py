@@ -7,7 +7,30 @@ CORS(app)
 
 
 INSIGHTS = {
-
+    "01": (
+        "Classic 0/1 knapsack solved using a DP table where dp[i][w] represents "
+        "the best value with the first i items and capacity w. Trace back from "
+        "dp[n][W] to list chosen item indices."
+    ),
+    "unbounded": (
+        "Unbounded knapsack also uses a DP table but each item may be reused "
+        "multiple times by looking at the current row when adding an item."
+    ),
+    "fractional": (
+        "Items are sorted by value/weight ratio and taken greedily. A fraction "
+        "of the next item may be taken when capacity is nearly full."
+    ),
+    "subset_sum": (
+        "Boolean DP where dp[i][t] states if a sum t can be formed using the "
+        "first i numbers. Trace back from the target to see the chosen numbers."
+    ),
+    "subset_partition": (
+        "Check subset sum for half of the total array sum to determine if a "
+        "partition exists and trace back the subset achieving that sum."
+    ),
+    "lcs": "Classic LCS DP where dp[i][j] stores length of LCS for prefixes.",
+    "lcsubstring": "Track consecutive matches for longest common substring.",
+    "scs": "Build DP for shortest common supersequence length and reconstruction.",
 }
 
 
