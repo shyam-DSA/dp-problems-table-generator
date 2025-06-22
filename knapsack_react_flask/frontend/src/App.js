@@ -167,7 +167,7 @@ function App() {
     if (type) {
       fetchProblem();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line
   }, [level, category, type]);
 
   const fetchSolution = () => {
