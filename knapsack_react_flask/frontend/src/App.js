@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import './App.css';
 import DPTableVisualizer from './DPTableVisualizer';
-import { VERSION, TIMESTAMP_IST } from './version';
+import { VERSION, TIMESTAMP_IST } from '../../../version';
 
 function App() {
   const typeLabels = {
