@@ -18,8 +18,19 @@ import {
 } from '@mui/material';
 import './App.css';
 import DPTableVisualizer from './DPTableVisualizer';
+import { VERSION, TIMESTAMP_IST } from './version';
 
 function App() {
+  const typeLabels = {
+    "01": "0/1 Knapsack",
+    unbounded: "Unbounded Knapsack",
+    fractional: "Fractional Knapsack",
+    subset_sum: "Subset Sum",
+    subset_partition: "Subset Partition",
+    lcs: "LCS",
+    lcsubstring: "Longest Common Substring",
+    scs: "Shortest Common Supersequence",
+  };
   const [problem, setProblem] = useState({});
   const [dp, setDp] = useState([]);
   const [level, setLevel] = useState('medium');
@@ -33,6 +44,7 @@ function App() {
   const [dpStates, setDpStates] = useState([]);
   const [steps, setSteps] = useState([]);
   const [currentStep, setCurrentStep] = useState(0);
+  const [stepCoords, setStepCoords] = useState([]);
   const [stepMode, setStepMode] = useState(false);
   const [path, setPath] = useState([]);
   const [highlight, setHighlight] = useState(new Set());
@@ -80,8 +92,14 @@ function App() {
             }
           }
         }
+        const coord = stepCoords[currentStep] || [];
+        if (coord.length === 2) {
+          changedSet.add(`${coord[0]}-${coord[1]}`);
+        }
         setChanged(changedSet);
-        setFilled(prev => new Set([...prev, ...changedSet]));
+        if (coord.length === 2) {
+          setFilled(prev => new Set([...prev, `${coord[0]}-${coord[1]}`]));
+        }
         if (firstChange) {
           const i = firstChange.i;
           const j = firstChange.j;
@@ -114,8 +132,14 @@ function App() {
           setFormula(f);
         }
       } else {
-        setChanged(new Set());
-        setFilled(new Set());
+        const coord = stepCoords[0] || [];
+        if (coord.length === 2) {
+          setChanged(new Set([`${coord[0]}-${coord[1]}`]));
+          setFilled(new Set([`${coord[0]}-${coord[1]}`]));
+        } else {
+          setChanged(new Set());
+          setFilled(new Set());
+        }
         setFormula('');
       }
       if (currentStep === steps.length - 1) {
@@ -125,7 +149,7 @@ function App() {
         setHighlight(new Set());
       }
     }
-  }, [steps, currentStep, stepMode, path]);
+  }, [steps, currentStep, stepMode, path, stepCoords]);
 
   const fetchProblem = () => {
     fetch('http://localhost:5000/generate', {
@@ -133,7 +157,10 @@ function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ level, type })
     })
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error('failed');
+      return res.json();
+    })
     .then(data => {
       setProblem(data);
       let empty;
@@ -154,13 +181,15 @@ function App() {
       setTarget(null);
       setDpStates([]);
       setSteps([]);
+      setStepCoords([]);
       setCurrentStep(0);
       setPath([]);
       setHighlight(new Set());
       setChanged(new Set());
       setFilled(new Set());
       setFormula('');
-    });
+    })
+    .catch(() => alert('Failed to fetch problem'));
   };
 
   useEffect(() => {
@@ -175,15 +204,24 @@ function App() {
     if (stepMode) {
       url = 'http://localhost:5000/solve_steps';
     }
+    const stepSupported = ['01', 'lcs', 'lcsubstring', 'scs'];
+    if (stepMode && !stepSupported.includes(type)) {
+      alert('Step mode not supported for this variation');
+      return;
+    }
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...problem, type })
     })
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error('failed');
+      return res.json();
+    })
     .then(data => {
       if (stepMode) {
         const stepData = data.steps || data.states || [];
+        setStepCoords(data.coords || []);
         setSteps(stepData);
         setFilled(new Set());
         setCurrentStep(0);
@@ -206,7 +244,8 @@ function App() {
         setPossible(data.hasOwnProperty('possible') ? data.possible : null);
         setTarget(data.hasOwnProperty('target') ? data.target : null);
       }
-    });
+    })
+    .catch(() => alert('Failed to fetch solution'));
   };
 
   const downloadPDF = () => {
@@ -308,7 +347,8 @@ function App() {
       <Button variant="outlined" onClick={downloadPDF}>Download PDF</Button>
       </Box>
       <Paper id="export" sx={{ mt: 2, p: 2 }}>
-        <Typography variant="h6" gutterBottom>Problem:</Typography>
+        <Typography variant="h6" gutterBottom>Problem: {category === 'knapsack' ? 'Knapsack' : 'LCS'}</Typography>
+        <Typography variant="subtitle2" gutterBottom>Variation: {typeLabels[type]}</Typography>
         {category === 'lcs' ? (
           <>
             <Typography variant="body2">String 1: {problem.s1}</Typography>
@@ -348,6 +388,9 @@ function App() {
         )}
       </Paper>
     </Container>
+    <Typography variant="caption" sx={{ position: 'fixed', bottom: 8, right: 16, color: 'gray' }}>
+      v{VERSION} - {TIMESTAMP_IST}
+    </Typography>
     </>
   );
 }
