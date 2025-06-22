@@ -36,6 +36,12 @@ function App() {
   const [stepMode, setStepMode] = useState(false);
   const [path, setPath] = useState([]);
   const [highlight, setHighlight] = useState(new Set());
+  const [changed, setChanged] = useState(new Set());
+  const [formula, setFormula] = useState('');
+
+  useEffect(() => {
+    setFormula('');
+  }, [stepMode]);
 
   useEffect(() => {
     if (!stepMode && dpStates.length > 0) {
@@ -58,7 +64,56 @@ function App() {
 
   useEffect(() => {
     if (stepMode && steps.length > 0) {
-      setDp(steps[currentStep]);
+      const curr = steps[currentStep];
+      setDp(curr);
+      if (currentStep > 0) {
+        const prev = steps[currentStep - 1];
+        const changedSet = new Set();
+        let firstChange = null;
+        for (let i = 0; i < curr.length; i++) {
+          for (let j = 0; j < curr[0].length; j++) {
+            if (curr[i][j] !== prev[i][j]) {
+              changedSet.add(`${i}-${j}`);
+              if (!firstChange) firstChange = { i, j };
+            }
+          }
+        }
+        setChanged(changedSet);
+        if (firstChange) {
+          const i = firstChange.i;
+          const j = firstChange.j;
+          let f = '';
+          if (type === '01') {
+            if (problem.weights[i - 1] <= j) {
+              const without = prev[i - 1][j];
+              const withItem = problem.values[i - 1] + prev[i - 1][j - problem.weights[i - 1]];
+              f = `dp[${i}][${j}] = max(${without}, ${withItem}) = ${curr[i][j]}`;
+            } else {
+              f = `dp[${i}][${j}] = ${prev[i - 1][j]}`;
+            }
+          } else if (type === 'unbounded') {
+            if (problem.weights[i - 1] <= j) {
+              const without = prev[i - 1][j];
+              const withItem = problem.values[i - 1] + curr[i][j - problem.weights[i - 1]];
+              f = `dp[${i}][${j}] = max(${without}, ${withItem}) = ${curr[i][j]}`;
+            } else {
+              f = `dp[${i}][${j}] = ${prev[i - 1][j]}`;
+            }
+          } else if (type === 'subset_sum' || type === 'subset_partition') {
+            if (problem.values[i - 1] <= j) {
+              const without = prev[i - 1][j];
+              const withItem = prev[i - 1][j - problem.values[i - 1]];
+              f = `dp[${i}][${j}] = ${without} || ${withItem} = ${curr[i][j]}`;
+            } else {
+              f = `dp[${i}][${j}] = ${prev[i - 1][j]}`;
+            }
+          }
+          setFormula(f);
+        }
+      } else {
+        setChanged(new Set());
+        setFormula('');
+      }
       if (currentStep === steps.length - 1) {
         const setH = new Set(path.map(p => `${p[0]}-${p[1]}`));
         setHighlight(setH);
@@ -98,11 +153,23 @@ function App() {
       setCurrentStep(0);
       setPath([]);
       setHighlight(new Set());
+      setChanged(new Set());
+      setFormula('');
     });
   };
 
+  useEffect(() => {
+    if (type) {
+      fetchProblem();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [level, category, type]);
+
   const fetchSolution = () => {
-    const url = stepMode ? 'http://localhost:5000/solve_steps' : 'http://localhost:5000/solve';
+    let url = 'http://localhost:5000/solve';
+    if (stepMode && type === '01') {
+      url = 'http://localhost:5000/solve_steps';
+    }
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -111,9 +178,10 @@ function App() {
     .then(res => res.json())
     .then(data => {
       if (stepMode) {
-        setSteps(data.steps || []);
+        const stepData = data.steps || data.states || [];
+        setSteps(stepData);
         setCurrentStep(0);
-        setDp(data.steps ? data.steps[0] : data.dp);
+        setDp(stepData.length > 0 ? stepData[0] : data.dp);
         setPath(data.path || []);
         setItems(data.items || []);
         setInsight(data.insight || '');
@@ -245,7 +313,9 @@ function App() {
         ) : (
           <>
             <Typography variant="body2">Values: {JSON.stringify(problem.values)}</Typography>
-            <Typography variant="body2">Weights: {JSON.stringify(problem.weights)}</Typography>
+            {type !== 'subset_sum' && type !== 'subset_partition' && (
+              <Typography variant="body2">Weights: {JSON.stringify(problem.weights)}</Typography>
+            )}
             <Typography variant="body2">Capacity: {problem.W}</Typography>
             <Typography variant="body2" gutterBottom>Items: {problem.n}</Typography>
           </>
@@ -254,7 +324,12 @@ function App() {
           <Typography variant="body2" gutterBottom>Result: {solutionValue}</Typography>
         )}
         <Typography variant="h6" gutterBottom>DP Table:</Typography>
-        <DPTableVisualizer dp={dp} category={category} problem={problem} highlight={highlight} />
+        <DPTableVisualizer dp={dp} category={category} problem={problem} highlight={highlight} changed={changed} />
+        {formula && (
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            {formula}
+          </Typography>
+        )}
         {items.length > 0 && (
           <Typography variant="body2" sx={{ mt: 1 }}>
             Selected item indices: {JSON.stringify(items)}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 
-function DPTableVisualizer({ dp, category, problem, highlight }) {
+function DPTableVisualizer({ dp, category, problem, highlight, changed }) {
   return (
     <TableContainer component={Paper}>
       <Table size="small" sx={{ '& td, & th': { border: 1, padding: '4px', textAlign: 'center' } }}>
@@ -21,7 +21,10 @@ function DPTableVisualizer({ dp, category, problem, highlight }) {
             <TableRow key={i}>
               <TableCell>{i}</TableCell>
               {row.map((cell, j) => (
-                <TableCell key={j} className={highlight.has(`${i}-${j}`) ? 'path-cell' : ''}>
+                <TableCell
+                  key={j}
+                  className={`${highlight.has(`${i}-${j}`) ? 'path-cell' : ''} ${changed.has(`${i}-${j}`) ? 'changed-cell' : ''}`}
+                >
                   {cell}
                 </TableCell>
               ))}
