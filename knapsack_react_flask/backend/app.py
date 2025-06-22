@@ -7,11 +7,27 @@ CORS(app)
 
 
 INSIGHTS = {
-    "01": "Classic 0/1 knapsack solved with DP table. Trace back from dp[n][W] to find chosen items.",
-    "unbounded": "Similar to 0/1 but allows multiple use of the same item at each step.",
-    "fractional": "Sort by value/weight ratio and take portions greedily.",
-    "subset_sum": "Boolean DP where dp[i][t] tells if sum t is possible with first i numbers.",
-    "subset_partition": "Check subset sum for half of total array sum to see if partition exists."
+    "01": (
+        "Classic 0/1 knapsack solved using a DP table where dp[i][w] represents "
+        "the best value with the first i items and capacity w. Trace back from "
+        "dp[n][W] to list chosen item indices."
+    ),
+    "unbounded": (
+        "Unbounded knapsack also uses a DP table but each item may be reused "
+        "multiple times by looking at the current row when adding an item."
+    ),
+    "fractional": (
+        "Items are sorted by value/weight ratio and taken greedily. A fraction of "
+        "the next item may be taken when capacity is nearly full."
+    ),
+    "subset_sum": (
+        "Boolean DP where dp[i][t] states if a sum t can be formed using the "
+        "first i numbers. Trace back from the target to see the chosen numbers."
+    ),
+    "subset_partition": (
+        "Check subset sum for half of the total array sum to determine if a "
+        "partition exists and trace back the subset achieving that sum."
+    ),
 }
 
 
@@ -51,9 +67,11 @@ def generate_problem(level="medium", ptype="01"):
     return values, weights, W, n
 
 
-def solve_knapsack(values, weights, W):
+def solve_knapsack(values, weights, W, *, return_states=False):
+    """Solve 0/1 knapsack. Optionally capture each DP table state."""
     n = len(values)
     dp = [[0] * (W + 1) for _ in range(n + 1)]
+    states = []
     for i in range(1, n + 1):
         for w in range(W + 1):
             if weights[i - 1] <= w:
@@ -62,18 +80,24 @@ def solve_knapsack(values, weights, W):
                 )
             else:
                 dp[i][w] = dp[i - 1][w]
-    return dp
+        if return_states:
+            states.append([row[:] for row in dp])
+    return (dp, states) if return_states else dp
 
 
-def solve_unbounded_knapsack(values, weights, W):
+def solve_unbounded_knapsack(values, weights, W, *, return_states=False):
+    """Solve unbounded knapsack. Optionally capture each DP state."""
     n = len(values)
     dp = [[0] * (W + 1) for _ in range(n + 1)]
+    states = []
     for i in range(1, n + 1):
         for w in range(W + 1):
             dp[i][w] = dp[i - 1][w]
             if weights[i - 1] <= w:
                 dp[i][w] = max(dp[i][w], values[i - 1] + dp[i][w - weights[i - 1]])
-    return dp
+        if return_states:
+            states.append([row[:] for row in dp])
+    return (dp, states) if return_states else dp
 
 
 def solve_fractional_knapsack(values, weights, W):
@@ -92,41 +116,55 @@ def solve_fractional_knapsack(values, weights, W):
     return total
 
 
-def solve_subset_sum(values, W):
+def solve_subset_sum(values, W, *, return_states=False):
+    """Subset sum DP. Optionally capture each DP state."""
     n = len(values)
     dp = [[False] * (W + 1) for _ in range(n + 1)]
     for i in range(n + 1):
         dp[i][0] = True
+    states = []
     for i in range(1, n + 1):
         for w in range(1, W + 1):
             dp[i][w] = dp[i - 1][w]
             if values[i - 1] <= w:
                 dp[i][w] = dp[i][w] or dp[i - 1][w - values[i - 1]]
-    return dp
+        if return_states:
+            states.append([row[:] for row in dp])
+    return (dp, states) if return_states else dp
 
 
-def traceback_subset(dp, values, W):
+def traceback_subset(dp, values, W, *, return_path=False):
+    """Trace back chosen numbers. Optionally return path coordinates."""
     i = len(values)
     w = W
     items = []
+    path = []
     while i > 0 and w >= 0:
         if w >= 0 and dp[i][w] and not dp[i - 1][w]:
             items.append(i - 1)
+            path.append((i, w))
             w -= values[i - 1]
         i -= 1
-    return items[::-1]
+    items.reverse()
+    path.reverse()
+    return (items, path) if return_path else items
 
 
-def traceback_knapsack(dp, values, weights, W):
+def traceback_knapsack(dp, values, weights, W, *, return_path=False):
+    """Trace back chosen items. Optionally return path coordinates."""
     i = len(values)
     w = W
     items = []
+    path = []
     while i > 0 and w >= 0:
         if dp[i][w] != dp[i - 1][w]:
             items.append(i - 1)
+            path.append((i, w))
             w -= weights[i - 1]
         i -= 1
-    return items[::-1]
+    items.reverse()
+    path.reverse()
+    return (items, path) if return_path else items
 
 
 @app.route("/generate", methods=["POST"])
@@ -146,29 +184,35 @@ def solve():
     W = data["W"]
     knap_type = data.get("type", "01")
     if knap_type == "unbounded":
-        dp = solve_unbounded_knapsack(values, weights, W)
-        return jsonify({"dp": dp, "insight": INSIGHTS["unbounded"]})
+        dp, states = solve_unbounded_knapsack(values, weights, W, return_states=True)
+        items, path = traceback_knapsack(dp, values, weights, W, return_path=True)
+        return jsonify({"dp": dp, "states": states, "items": items, "path": path,
+                        "insight": INSIGHTS["unbounded"]})
     elif knap_type == "fractional":
         value = solve_fractional_knapsack(values, weights, W)
         return jsonify({"value": value, "insight": INSIGHTS["fractional"]})
     elif knap_type == "subset_sum":
-        dp = solve_subset_sum(values, W)
+        dp, states = solve_subset_sum(values, W, return_states=True)
         possible = dp[len(values)][W]
-        items = traceback_subset(dp, values, W) if possible else []
-        return jsonify({"dp": dp, "possible": bool(possible), "items": items, "insight": INSIGHTS["subset_sum"]})
+        items, path = (traceback_subset(dp, values, W, return_path=True) if possible else ([], []))
+        return jsonify({"dp": dp, "states": states, "possible": bool(possible),
+                        "items": items, "path": path, "insight": INSIGHTS["subset_sum"]})
     elif knap_type == "subset_partition":
         total = sum(values)
         if total % 2 != 0:
             return jsonify({"possible": False, "insight": INSIGHTS["subset_partition"]})
         target = total // 2
-        dp = solve_subset_sum(values, target)
+        dp, states = solve_subset_sum(values, target, return_states=True)
         possible = dp[len(values)][target]
-        items = traceback_subset(dp, values, target) if possible else []
-        return jsonify({"dp": dp, "possible": bool(possible), "target": target, "items": items, "insight": INSIGHTS["subset_partition"]})
+        items, path = (traceback_subset(dp, values, target, return_path=True) if possible else ([], []))
+        return jsonify({"dp": dp, "states": states, "possible": bool(possible),
+                        "target": target, "items": items, "path": path,
+                        "insight": INSIGHTS["subset_partition"]})
     else:
-        dp = solve_knapsack(values, weights, W)
-        items = traceback_knapsack(dp, values, weights, W)
-        return jsonify({"dp": dp, "items": items, "insight": INSIGHTS["01"]})
+        dp, states = solve_knapsack(values, weights, W, return_states=True)
+        items, path = traceback_knapsack(dp, values, weights, W, return_path=True)
+        return jsonify({"dp": dp, "states": states, "items": items, "path": path,
+                        "insight": INSIGHTS["01"]})
 
 
 if __name__ == "__main__":
