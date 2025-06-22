@@ -65,7 +65,8 @@ def test_solve_knapsack_steps():
     values = [1, 2, 3]
     weights = [1, 2, 3]
     W = 5
-    dp, steps = solve_knapsack_steps(values, weights, W)
+    dp, steps, coords = solve_knapsack_steps(values, weights, W)
     assert dp[-1][-1] == 5
     assert len(steps) == len(values) * (W + 1)
+    assert len(coords) == len(steps)
     assert steps[-1][-1][-1] == 5

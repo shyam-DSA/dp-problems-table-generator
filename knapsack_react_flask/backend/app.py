@@ -99,10 +99,11 @@ def solve_knapsack(values, weights, W, *, return_states=False):
 
 
 def solve_knapsack_steps(values, weights, W):
-    """Solve 0/1 knapsack returning a state after each cell update."""
+    """Solve 0/1 knapsack returning a state and coordinates after each cell update."""
     n = len(values)
     dp = [[0] * (W + 1) for _ in range(n + 1)]
     steps = []
+    coords = []
     for i in range(1, n + 1):
         for w in range(W + 1):
             if weights[i - 1] <= w:
@@ -112,7 +113,8 @@ def solve_knapsack_steps(values, weights, W):
             else:
                 dp[i][w] = dp[i - 1][w]
             steps.append(copy.deepcopy(dp))
-    return dp, steps
+            coords.append((i, w))
+    return dp, steps, coords
 
 
 def solve_unbounded_knapsack(values, weights, W, *, return_states=False):
@@ -212,6 +214,7 @@ def solve_lcs_steps(s1, s2):
     m, n = len(s1), len(s2)
     dp = [[0] * (n + 1) for _ in range(m + 1)]
     steps = []
+    coords = []
     for i in range(1, m + 1):
         for j in range(1, n + 1):
             if s1[i - 1] == s2[j - 1]:
@@ -219,7 +222,8 @@ def solve_lcs_steps(s1, s2):
             else:
                 dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
             steps.append(copy.deepcopy(dp))
-    return dp, steps
+            coords.append((i, j))
+    return dp, steps, coords
 
 
 def traceback_lcs(dp, s1, s2):
@@ -258,6 +262,7 @@ def solve_longest_common_substring_steps(s1, s2):
     m, n = len(s1), len(s2)
     dp = [[0] * (n + 1) for _ in range(m + 1)]
     steps = []
+    coords = []
     max_len = 0
     end_idx = 0
     for i in range(1, m + 1):
@@ -270,8 +275,9 @@ def solve_longest_common_substring_steps(s1, s2):
             else:
                 dp[i][j] = 0
             steps.append(copy.deepcopy(dp))
+            coords.append((i, j))
     substr = s1[end_idx - max_len:end_idx]
-    return dp, steps, substr
+    return dp, steps, coords, substr
 
 
 def solve_scs(s1, s2):
@@ -293,12 +299,15 @@ def solve_scs_steps(s1, s2):
     m, n = len(s1), len(s2)
     dp = [[0] * (n + 1) for _ in range(m + 1)]
     steps = []
+    coords = []
     for i in range(m + 1):
         dp[i][0] = i
         steps.append(copy.deepcopy(dp))
+        coords.append((i, 0))
     for j in range(1, n + 1):
         dp[0][j] = j
         steps.append(copy.deepcopy(dp))
+        coords.append((0, j))
     for i in range(1, m + 1):
         for j in range(1, n + 1):
             if s1[i - 1] == s2[j - 1]:
@@ -306,7 +315,8 @@ def solve_scs_steps(s1, s2):
             else:
                 dp[i][j] = min(dp[i - 1][j], dp[i][j - 1]) + 1
             steps.append(copy.deepcopy(dp))
-    return dp, steps
+            coords.append((i, j))
+    return dp, steps, coords
 
 
 def traceback_scs(dp, s1, s2):
@@ -408,29 +418,32 @@ def solve_steps_route():
         values = data["values"]
         weights = data["weights"]
         W = data["W"]
-        dp, steps = solve_knapsack_steps(values, weights, W)
+        dp, steps, coords = solve_knapsack_steps(values, weights, W)
         items, path = traceback_knapsack(dp, values, weights, W, return_path=True)
-        return jsonify({"dp": dp, "steps": steps, "items": items, "path": path,
+        return jsonify({"dp": dp, "steps": steps, "coords": coords,
+                        "items": items, "path": path,
                         "insight": INSIGHTS["01"]})
     elif ptype == "lcs":
         s1 = data["s1"]
         s2 = data["s2"]
-        dp, steps = solve_lcs_steps(s1, s2)
+        dp, steps, coords = solve_lcs_steps(s1, s2)
         seq = traceback_lcs(dp, s1, s2)
-        return jsonify({"dp": dp, "steps": steps, "result": seq,
-                        "insight": INSIGHTS["lcs"]})
+        return jsonify({"dp": dp, "steps": steps, "coords": coords,
+                        "result": seq, "insight": INSIGHTS["lcs"]})
     elif ptype == "lcsubstring":
         s1 = data["s1"]
         s2 = data["s2"]
-        dp, steps, substr = solve_longest_common_substring_steps(s1, s2)
-        return jsonify({"dp": dp, "steps": steps, "result": substr,
+        dp, steps, coords, substr = solve_longest_common_substring_steps(s1, s2)
+        return jsonify({"dp": dp, "steps": steps, "coords": coords,
+                        "result": substr,
                         "insight": INSIGHTS["lcsubstring"]})
     elif ptype == "scs":
         s1 = data["s1"]
         s2 = data["s2"]
-        dp, steps = solve_scs_steps(s1, s2)
+        dp, steps, coords = solve_scs_steps(s1, s2)
         seq = traceback_scs(dp, s1, s2)
-        return jsonify({"dp": dp, "steps": steps, "result": seq,
+        return jsonify({"dp": dp, "steps": steps, "coords": coords,
+                        "result": seq,
                         "insight": INSIGHTS["scs"]})
     else:
         return jsonify({"error": "step mode not supported"}), 400
