@@ -7,9 +7,15 @@ import App from '../App';
 jest.mock('html2pdf.js', () => ({ __esModule: true, default: jest.fn() }));
 global.fetch = jest.fn(url => {
   if (url.includes('generate')) {
-    return Promise.resolve({ json: () => Promise.resolve({ values: [1], weights: [1], W: 1, n: 1 }) });
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ values: [1], weights: [1], W: 1, n: 1 })
+    });
   }
-  return Promise.resolve({ json: () => Promise.resolve({ dp: [[0,0],[0,1]], steps: [[[0,0],[0,1]]] }) });
+  return Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({ dp: [[0,0],[0,1]], steps: [[[0,0],[0,1]]] })
+  });
 });
 
 // Basic integration test to verify step mode shows navigation buttons

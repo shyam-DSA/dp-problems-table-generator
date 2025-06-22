@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
 
 function DPTableVisualizer({ dp, category, problem, highlight, changed, filled }) {
   return (
-    <TableContainer component={Paper}>
+    <TableContainer component={Paper} className="dp-table">
       <Table size="small" sx={{ '& td, & th': { border: 1, padding: '4px', textAlign: 'center' } }}>
         <TableHead>
           <TableRow>

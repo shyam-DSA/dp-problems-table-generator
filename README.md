@@ -26,7 +26,11 @@ This project contains a small Flask backend and React frontend for generating an
    ```bash
    npm start
    ```
-   The React app runs on `http://localhost:3000` and expects the Flask backend on port `5000`.
+The React app runs on `http://localhost:3000` and expects the Flask backend on port `5000`.
+
+## Versioning
+
+Application version information is stored in `version.js` at the repository root. The frontend displays the version and last update time in the bottom right corner.
 
 ## Usage
 
